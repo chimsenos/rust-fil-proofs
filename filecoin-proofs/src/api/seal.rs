@@ -6,6 +6,7 @@ use anyhow::{ensure, Context, Result};
 use bellperson::groth16;
 use bincode::{deserialize, serialize};
 use blstrs::{Bls12, Scalar as Fr};
+use lazy_static::lazy_static;
 use filecoin_hashers::{Domain, Hasher};
 use log::{info, trace};
 use memmap::MmapOptions;
@@ -19,7 +20,10 @@ use storage_proofs_core::{
     measurements::{measure_op, Operation},
     merkle::{create_base_merkle_tree, BinaryMerkleTree, MerkleTreeTrait},
     multi_proof::MultiProof,
-    parameter_cache::SRS_MAX_PROOFS_TO_AGGREGATE,
+    parameter_cache::{
+        SRS_MAX_PROOFS_TO_AGGREGATE,
+        market_cache_dir_name,
+    },
     proof::ProofScheme,
     sector::SectorId,
     util::default_rows_to_discard,
@@ -48,6 +52,24 @@ use crate::{
         SealPreCommitOutput, SealPreCommitPhase1Output, SectorSize, Ticket, BINARY_ARITY,
     },
 };
+
+lazy_static! {
+    static ref MARKET_CACHE_TREE: String = format!(
+        "{}/{}",
+        market_cache_dir_name(),
+        String::from("tree")
+    );
+    static ref MARKET_CACHE_SEALED: String = format!(
+        "{}/{}",
+        market_cache_dir_name(),
+        String::from("sealed")
+    );
+    static ref MARKET_EXIST: bool = {
+        let tree_exist = metadata(Path::new(MARKET_CACHE_TREE).as_ref())?.is_file()
+        let sealed_exist = metadata(Path::new(MARKET_CACHE_SEALED).as_ref())?.is_file()
+        tree_exist && sealed_exist
+    };
+}
 
 #[allow(clippy::too_many_arguments)]
 pub fn seal_pre_commit_phase1<R, S, T, Tree: 'static + MerkleTreeTrait>(
@@ -80,6 +102,9 @@ where
         metadata(cache_path.as_ref())?.is_dir(),
         "cache_path must be a directory"
     );
+
+    println!("piece_info: {:?}", piece_info);
+
 
     let sector_bytes = usize::from(PaddedBytesAmount::from(porep_config));
     fs::metadata(&in_path)
@@ -127,6 +152,8 @@ where
         StackedDrg<'_, Tree, DefaultPieceHasher>,
         _,
     >>::setup(&compound_setup_params)?;
+
+
 
     trace!("building merkle tree for the original data");
     let (config, comm_d) = measure_op(Operation::CommD, || -> Result<_> {
