@@ -106,7 +106,7 @@ where
         "cache_path must be a directory"
     );
 
-    println!("piece_info: {:?}", piece_info);
+    println!("piece_infos: {:?}", piece_infos);
 
 
     let sector_bytes = usize::from(PaddedBytesAmount::from(porep_config));
