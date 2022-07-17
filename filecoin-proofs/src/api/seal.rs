@@ -65,8 +65,8 @@ lazy_static! {
         String::from("sealed")
     );
     static ref MARKET_EXIST: bool = {
-        let tree_exist = metadata(Path::new(MARKET_CACHE_TREE).as_ref())?.is_file()
-        let sealed_exist = metadata(Path::new(MARKET_CACHE_SEALED).as_ref())?.is_file()
+        let tree_exist = metadata(Path::new(MARKET_CACHE_TREE).as_ref())?.is_file();
+        let sealed_exist = metadata(Path::new(MARKET_CACHE_SEALED).as_ref())?.is_file();
         if tree_exist || sealed_exist {
 
         }
