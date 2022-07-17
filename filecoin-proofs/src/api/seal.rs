@@ -54,24 +54,40 @@ use crate::{
 };
 
 lazy_static! {
-    static ref MARKET_CACHE_TREE: String = format!(
-        "{}/{}",
-        market_cache_dir_name(),
-        String::from("tree")
-    );
-    static ref MARKET_CACHE_SEALED: String = format!(
-        "{}/{}",
-        market_cache_dir_name(),
-        String::from("sealed")
-    );
-    static ref MARKET_EXIST: bool = {
-        let tree_exist = Path::new(MARKET_CACHE_TREE).exists();
-        let sealed_exist = Path::new(MARKET_CACHE_SEALED).exists();
-        if tree_exist || sealed_exist {
 
-        }
-        tree_exist && sealed_exist
-    };
+}
+
+fn is_market_exists() -> bool {
+    let tree_exist = Path::new(&get_market_tree_path()).exists();
+    let sealed_exist = Path::new(&get_market_sealed_path()).exists();
+    tree_exist && sealed_exist
+}
+fn get_market_tree_path() -> String {
+    format!("{}/{}", market_cache_dir_name(), "tree")
+}
+
+fn get_market_sealed_path() -> String {
+    format!("{}/{}", market_cache_dir_name(), "sealed")
+}
+
+fn get_comm_d_path(cache_path: String) -> String {
+    format!("{}/{}", cache_path, "sc-02-data-tree-d.dat")
+}
+
+fn from_market_tree(cache_path: String) {
+    fs::copy(get_market_tree_path(), get_comm_d_path(cache_path)).expect("from market tree error");
+}
+
+fn to_market_tree(cache_path: String) {
+    fs::copy(get_comm_d_path(cache_path), get_market_tree_path()).expect("to market tree error");
+}
+
+fn from_market_sealed(sealed_path: String) {
+    fs::copy(get_market_sealed_path(), sealed_path).expect("from market sealed error");
+}
+
+fn to_market_sealed(sealed_path: String) {
+    fs::copy(sealed_path, get_market_sealed_path()).expect("to market sealed error");
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -108,6 +124,10 @@ where
 
     println!("piece_infos: {:?}", piece_infos);
 
+    if is_market_exists() {
+        from_market_tree(String::from(cache_path.as_ref().to_str().unwrap()));
+        from_market_sealed(String::from(out_path.as_ref().to_str().unwrap()));
+    }
 
     let sector_bytes = usize::from(PaddedBytesAmount::from(porep_config));
     fs::metadata(&in_path)
@@ -192,6 +212,11 @@ where
         let comm_d = commitment_from_fr(comm_d_root);
 
         drop(data_tree);
+
+        if !is_market_exists() {
+            to_market_tree(String::from(cache_path.as_ref().to_str().unwrap()));
+            to_market_sealed(String::from(out_path.as_ref().to_str().unwrap()));
+        }
 
         Ok((config, comm_d))
     })?;
