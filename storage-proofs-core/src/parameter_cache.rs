@@ -653,5 +653,5 @@ where
 }
 
 pub fn market_cache_dir_name() -> String {
-    SETTINGS.multicore_sdr_maker_cache.cache()
+    SETTINGS.multicore_sdr_maker_cache.clone()
 }
