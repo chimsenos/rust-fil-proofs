@@ -6,7 +6,6 @@ use anyhow::{ensure, Context, Result};
 use bellperson::groth16;
 use bincode::{deserialize, serialize};
 use blstrs::{Bls12, Scalar as Fr};
-use lazy_static::lazy_static;
 use filecoin_hashers::{Domain, Hasher};
 use log::{info, trace};
 use memmap::MmapOptions;
@@ -53,13 +52,6 @@ use crate::{
     },
 };
 
-use std::sync::Mutex;
-
-lazy_static! {
-    static ref SC: Mutex<StoreConfig> = Mutex::new(StoreConfig::new(Path::new("~"), CacheKey::CommDTree.to_string(), 0));
-    static ref CD: Mutex<Commitment> = Mutex::new([0u8;32]);
-}
-
 fn is_market_exists() -> bool {
     let tree_exist = Path::new(&get_market_tree_path()).exists();
     let sealed_exist = Path::new(&get_market_sealed_path()).exists();
@@ -75,6 +67,44 @@ fn get_market_sealed_path() -> String {
 
 fn get_comm_d_path(cache_path: String) -> String {
     format!("{}/{}", cache_path, "sc-02-data-tree-d.dat")
+}
+
+fn get_commitment() -> Commitment {
+    let mut commitment = [0; 32];
+    let  comm_path = format!("{}/{}", market_cache_dir_name(), "commitment");
+    let data = fs::read(comm_path).unwrap();
+    commitment.copy_from_slice(data.as_slice());
+    commitment
+}
+
+fn set_commitment(commitment: Commitment) {
+    let  comm_path = format!("{}/{}", market_cache_dir_name(), "commitment");
+    let mut file = fs::File::create(comm_path).expect("create failed");
+    file.write_all(&commitment).expect("write err");
+}
+
+fn set_discard(discard: usize) {
+    let p = format!("{}/{}", market_cache_dir_name(), "discard");
+    let mut file = fs::File::create(p).expect("create failed");
+    file.write_all(discard.to_string().as_bytes()).expect("write err");
+}
+
+fn get_discard() -> usize {
+    let p = format!("{}/{}", market_cache_dir_name(), "discard");
+    let discard = fs::read_to_string(p).expect("open file err");
+    discard.parse().unwrap()
+}
+
+fn set_config_size(sz: usize) {
+    let p = format!("{}/{}", market_cache_dir_name(), "sz");
+    let mut file = fs::File::create(p).expect("create failed");
+    file.write_all(sz.to_string().as_bytes()).expect("write err");
+}
+
+fn get_config_size() -> usize {
+    let p = format!("{}/{}", market_cache_dir_name(), "sz");
+    let discard = fs::read_to_string(p).expect("open file err");
+    discard.parse().unwrap()
 }
 
 fn from_market_tree(cache_path: String) {
@@ -213,25 +243,25 @@ where
 
             drop(data_tree);
 
-            if !is_market_exists() {
-                to_market_tree(String::from(cache_path.as_ref().to_str().unwrap()));
-                to_market_sealed(String::from(out_path.as_ref().to_str().unwrap()));
-            }
-
             Ok((config, comm_d))
         })?;
 
-        SC.lock().unwrap().path = config.path;
-        SC.lock().unwrap().id = config.id;
-        SC.lock().unwrap().size = config.size;
-        SC.lock().unwrap().rows_to_discard = config.rows_to_discard;
-        CD.lock().unwrap().copy_from_slice(&comm_d);
+        if !is_market_exists() {
+            to_market_tree(String::from(cache_path.as_ref().to_str().unwrap()));
+            to_market_sealed(String::from(out_path.as_ref().to_str().unwrap()));
+            set_commitment(comm_d);
+            set_discard(config.rows_to_discard);
+            set_config_size(config.size.unwrap());
+        }
     }
 
-    let mut config = SC.lock().unwrap().clone();
-    let comm_d = CD.lock().unwrap().clone();
-
-    config.path = cache_path.as_ref().into();
+    let mut config = StoreConfig::new(
+        cache_path.as_ref(),
+        CacheKey::CommDTree.to_string(),
+        get_discard(),
+    );
+    config.size = Some(get_config_size());
+    let comm_d = get_commitment();
 
     trace!("verifying pieces");
 
