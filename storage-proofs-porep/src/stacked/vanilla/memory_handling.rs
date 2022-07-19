@@ -10,7 +10,8 @@ use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use anyhow::Result;
 use byte_slice_cast::{AsSliceOf, FromByteSlice};
 use log::{info, warn};
-use mapr::{Mmap, MmapMut, MmapOptions};
+// use mapr::{Mmap, MmapMut, MmapOptions};
+use mmap_rs::{Mmap, MmapMut, MmapOptions};
 
 pub struct CacheReader<T> {
     file: File,
@@ -189,7 +190,7 @@ impl<T: FromByteSlice> CacheReader<T> {
 
     fn map_buf(offset: u64, len: usize, file: &File) -> Result<Mmap> {
         unsafe {
-            MmapOptions::new()
+            MmapOptions::new(len)
                 .offset(offset)
                 .len(len)
                 .private()
@@ -276,7 +277,7 @@ impl<T: FromByteSlice> CacheReader<T> {
 }
 
 fn allocate_layer(sector_size: usize) -> Result<MmapMut> {
-    match MmapOptions::new()
+    match MmapOptions::new(sector_size)
         .len(sector_size)
         .private()
         .clone()
@@ -290,7 +291,7 @@ fn allocate_layer(sector_size: usize) -> Result<MmapMut> {
         Err(err) => {
             // fallback to not locked if permissions are not available
             warn!("failed to lock map {:?}, falling back", err);
-            let layer = MmapOptions::new().len(sector_size).private().map_anon()?;
+            let layer = MmapOptions::new(sector_size).len(sector_size).private().map_anon()?;
             Ok(layer)
         }
     }

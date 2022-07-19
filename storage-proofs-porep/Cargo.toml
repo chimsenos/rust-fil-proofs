@@ -16,7 +16,9 @@ sha2raw = { path = "../sha2raw", version = "^6.0.0"}
 filecoin-hashers = { path = "../filecoin-hashers", version = "~6.1.0", default-features = false, features = ["poseidon", "sha256"]}
 rand = "0.8"
 merkletree = "0.21.0"
-mapr = "0.8.0"
+#mapr = "0.8.0"
+#mmap-rs = { git = "https://github.com/StephanvanSchaik/mmap-rs.git" }
+mmap-rs = "0.3.0"
 num-bigint = "0.2"
 num-traits = "0.2"
 rayon = "1.0.0"
