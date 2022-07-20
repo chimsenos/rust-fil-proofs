@@ -11,7 +11,7 @@ use anyhow::Result;
 use byte_slice_cast::{AsSliceOf, FromByteSlice};
 use log::{info, warn};
 // use mapr::{Mmap, MmapMut, MmapOptions};
-use memmap2::{Mmap, MmapMut, MmapOptions, Advice};
+use memmapix::{Mmap, MmapMut, MmapOptions, Advice};
 
 pub struct CacheReader<T> {
     file: File,
@@ -280,6 +280,7 @@ fn allocate_layer(sector_size: usize) -> Result<MmapMut> {
         .len(sector_size)
         .clone()
         .populate()
+        .stack()
         .map_anon()
         .and_then(|mut layer| {
             layer.advise(Advice::HugePage).expect("mmap advising should be supported on unix");
