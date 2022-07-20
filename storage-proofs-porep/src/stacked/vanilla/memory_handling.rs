@@ -11,7 +11,7 @@ use anyhow::Result;
 use byte_slice_cast::{AsSliceOf, FromByteSlice};
 use log::{info, warn};
 // use mapr::{Mmap, MmapMut, MmapOptions};
-use memmap2::{Mmap, MmapMut, MmapOptions};
+use memmap2::{Mmap, MmapMut, MmapOptions, Advice};
 
 pub struct CacheReader<T> {
     file: File,
@@ -282,7 +282,6 @@ fn allocate_layer(sector_size: usize) -> Result<MmapMut> {
         .private()
         .clone()
         .lock()
-        .advise()
         .and_then(|mut layer| {
             layer.mlock()?;
             Ok(layer)
@@ -305,7 +304,8 @@ pub fn setup_create_label_memory(
 ) -> Result<(CacheReader<u32>, MmapMut, MmapMut)> {
     let parents_cache = CacheReader::new(cache_path, window_size, degree)?;
     let layer_labels = allocate_layer(sector_size)?;
+    layer_labels.advise(Advice::HugePage).expect("mmap advising should be supported on unix");
     let exp_labels = allocate_layer(sector_size)?;
-
+    exp_labels.advise(Advice::HugePage).expect("mmap advising should be supported on unix");
     Ok((parents_cache, layer_labels, exp_labels))
 }
