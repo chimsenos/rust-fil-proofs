@@ -279,11 +279,12 @@ fn allocate_layer(sector_size: usize) -> Result<MmapMut> {
     match MmapOptions::new()
         .len(sector_size)
         .clone()
-        // .and_then(|mut layer| {
-        //     layer.?;
-        //     Ok(layer)
-        // }) {
-        {Ok(layer) => Ok(layer),
+        .map_anon()
+        .and_then(|mut layer| {
+            layer.mlock()?;
+            Ok(layer)
+        }) {
+        Ok(layer) => Ok(layer),
         Err(err) => {
             // fallback to not locked if permissions are not available
             warn!("failed to lock map {:?}, falling back", err);
