@@ -11,7 +11,7 @@ use anyhow::Result;
 use byte_slice_cast::{AsSliceOf, FromByteSlice};
 use log::{info, warn};
 // use mapr::{Mmap, MmapMut, MmapOptions};
-use mmap_rs::{Mmap, MmapMut, MmapOptions};
+use memmap2::{Mmap, MmapMut, MmapOptions};
 
 pub struct CacheReader<T> {
     file: File,
@@ -190,7 +190,7 @@ impl<T: FromByteSlice> CacheReader<T> {
 
     fn map_buf(offset: u64, len: usize, file: &File) -> Result<Mmap> {
         unsafe {
-            MmapOptions::new(len)
+            MmapOptions::new()
                 .offset(offset)
                 .len(len)
                 .private()
@@ -277,12 +277,12 @@ impl<T: FromByteSlice> CacheReader<T> {
 }
 
 fn allocate_layer(sector_size: usize) -> Result<MmapMut> {
-    match MmapOptions::new(sector_size)
+    match MmapOptions::new()
         .len(sector_size)
         .private()
         .clone()
         .lock()
-        .map_anon()
+        .advise()
         .and_then(|mut layer| {
             layer.mlock()?;
             Ok(layer)
@@ -291,7 +291,7 @@ fn allocate_layer(sector_size: usize) -> Result<MmapMut> {
         Err(err) => {
             // fallback to not locked if permissions are not available
             warn!("failed to lock map {:?}, falling back", err);
-            let layer = MmapOptions::new(sector_size).len(sector_size).private().map_anon()?;
+            let layer = MmapOptions::new().len(sector_size).private().map_anon()?;
             Ok(layer)
         }
     }
