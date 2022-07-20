@@ -10,13 +10,10 @@ type CoreGroup = Vec<CoreIndex>;
 lazy_static! {
     pub static ref TOPOLOGY: Mutex<Topology> = Mutex::new(Topology::new());
     pub static ref CORE_GROUPS: Option<Vec<Mutex<CoreGroup>>> = {
-        // let num_producers = &SETTINGS.multicore_sdr_producers;
-        // let cores_per_unit = num_producers + 1;
-        //
-        // core_groups(cores_per_unit)
+        let num_producers = &SETTINGS.multicore_sdr_producers;
+        let cores_per_unit = num_producers + 1;
 
-        let core_cfg = SETTINGS.multicore_sdr_cores.clone();
-        core_custom(core_cfg)
+        core_groups(cores_per_unit)
     };
 }
 
@@ -128,12 +125,6 @@ fn get_core_by_index(topo: &Topology, index: CoreIndex) -> Result<&TopologyObjec
         )),
         _e => Err(format_err!("failed to get core by index {}", idx,)),
     }
-}
-
-fn core_custom(cfg: String) -> Option<Vec<Mutex<Vec<CoreIndex>>>> {
-    let groups = cfg.split("|").collect::<Vec<_>>();
-    let cores = groups.iter().map(|group|{ group.split(",").map(|x|CoreIndex(x.parse::<usize>().unwrap())).collect::<Vec<_>>() }).collect::<Vec<_>>();
-    Some(cores.iter().map(|x| Mutex::new(x.clone())).collect::<Vec<_>>())
 }
 
 fn core_groups(cores_per_unit: usize) -> Option<Vec<Mutex<Vec<CoreIndex>>>> {
