@@ -279,7 +279,6 @@ fn allocate_layer(sector_size: usize) -> Result<MmapMut> {
     match MmapOptions::new()
         .len(sector_size)
         .clone()
-        .lock()
         .and_then(|mut layer| {
             layer.mlock()?;
             Ok(layer)
