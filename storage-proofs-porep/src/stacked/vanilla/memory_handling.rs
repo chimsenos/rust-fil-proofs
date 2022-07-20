@@ -279,7 +279,7 @@ fn allocate_layer(sector_size: usize) -> Result<MmapMut> {
     match MmapOptions::new()
         .len(sector_size)
         .clone()
-        .map_anon()
+        .populate()
         .and_then(|mut layer| {
             layer.advise(Advice::HugePage).expect("mmap advising should be supported on unix");
             Ok(layer)
