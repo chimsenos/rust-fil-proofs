@@ -12,6 +12,7 @@ use byte_slice_cast::{AsSliceOf, FromByteSlice};
 use libc::MADV_HUGEPAGE;
 use log::{info, warn};
 use memmapix::{Mmap, MmapMut, MmapOptions};
+use rustix::backend::mm::types::Advice;
 pub struct CacheReader<T> {
     file: File,
     bufs: UnsafeCell<[Mmap; 2]>,
