@@ -16,7 +16,7 @@ use generic_array::{
     GenericArray,
 };
 use log::{debug, info};
-use memmapix::MmapMut;
+use mapr::MmapMut;
 use merkletree::store::{DiskStore, Store, StoreConfig};
 use storage_proofs_core::{
     cache_key::CacheKey,
