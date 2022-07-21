@@ -10,9 +10,7 @@ use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use anyhow::Result;
 use byte_slice_cast::{AsSliceOf, FromByteSlice};
 use log::{info, warn};
-// use mapr::{Mmap, MmapMut, MmapOptions};
-use memmapix::{Mmap, MmapMut, MmapOptions};
-use rustix::mm::Advice;
+use mapr::{Mmap, MmapMut, MmapOptions};
 
 pub struct CacheReader<T> {
     file: File,
@@ -194,6 +192,7 @@ impl<T: FromByteSlice> CacheReader<T> {
             MmapOptions::new()
                 .offset(offset)
                 .len(len)
+                .private()
                 .map(file)
                 .map_err(|e| e.into())
         }
@@ -268,7 +267,7 @@ impl<T: FromByteSlice> CacheReader<T> {
             self.window_size as usize,
             &self.file,
         )
-        .expect("map_buf failed");
+            .expect("map_buf failed");
 
         unsafe {
             self.get_mut_bufs()[replace_idx] = new_buf;
@@ -279,19 +278,19 @@ impl<T: FromByteSlice> CacheReader<T> {
 fn allocate_layer(sector_size: usize) -> Result<MmapMut> {
     match MmapOptions::new()
         .len(sector_size)
+        .private()
         .clone()
-        .populate()
-        .stack()
+        .lock()
         .map_anon()
         .and_then(|mut layer| {
-            layer.advise(Advice::HugePage).expect("mmap advising should be supported on unix");
+            layer.mlock()?;
             Ok(layer)
         }) {
         Ok(layer) => Ok(layer),
         Err(err) => {
             // fallback to not locked if permissions are not available
             warn!("failed to lock map {:?}, falling back", err);
-            let layer = MmapOptions::new().len(sector_size).map_anon()?;
+            let layer = MmapOptions::new().len(sector_size).private().map_anon()?;
             Ok(layer)
         }
     }
@@ -306,5 +305,6 @@ pub fn setup_create_label_memory(
     let parents_cache = CacheReader::new(cache_path, window_size, degree)?;
     let layer_labels = allocate_layer(sector_size)?;
     let exp_labels = allocate_layer(sector_size)?;
+
     Ok((parents_cache, layer_labels, exp_labels))
 }

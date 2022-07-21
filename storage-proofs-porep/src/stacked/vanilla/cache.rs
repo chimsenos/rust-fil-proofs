@@ -9,7 +9,7 @@ use byteorder::{ByteOrder, LittleEndian};
 use filecoin_hashers::Hasher;
 use lazy_static::lazy_static;
 use log::{info, trace};
-use memmapix::{Mmap, MmapOptions};
+use mapr::{Mmap, MmapOptions};
 use rayon::prelude::{IndexedParallelIterator, ParallelIterator, ParallelSliceMut};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -152,9 +152,9 @@ impl CacheData {
 
 impl ParentCache {
     pub fn new<H, G>(len: u32, cache_entries: u32, graph: &StackedGraph<H, G>) -> Result<Self>
-    where
-        H: Hasher,
-        G: Graph<H> + ParameterSetMetadata + Send + Sync,
+        where
+            H: Hasher,
+            G: Graph<H> + ParameterSetMetadata + Send + Sync,
     {
         let path = cache_path(cache_entries, graph);
         let generation_key = path.display().to_string();
@@ -200,9 +200,9 @@ impl ParentCache {
         graph: &StackedGraph<H, G>,
         path: &Path,
     ) -> Result<Self>
-    where
-        H: Hasher,
-        G: Graph<H> + ParameterSetMetadata + Send + Sync,
+        where
+            H: Hasher,
+            G: Graph<H> + ParameterSetMetadata + Send + Sync,
     {
         // Check if current entry is part of the official parent cache manifest.  If not, we're
         // dealing with some kind of test sector.  If verify has been requested but it's not a
@@ -303,15 +303,15 @@ impl ParentCache {
         graph: &StackedGraph<H, G>,
         path: &Path,
     ) -> Result<Self>
-    where
-        H: Hasher,
-        G: Graph<H> + ParameterSetMetadata + Send + Sync,
+        where
+            H: Hasher,
+            G: Graph<H> + ParameterSetMetadata + Send + Sync,
     {
         info!("parent cache: generating {}", path.display());
         let mut digest_hex: String = "".to_string();
         let sector_size = graph.size() * NODE_SIZE;
 
-        with_exclusive_lock(&path.to_path_buf(), |file| {
+        with_exclusive_lock(path, |file| {
             let cache_size = cache_entries as usize * NODE_BYTES * DEGREE;
             file.as_ref()
                 .set_len(cache_size as u64)
@@ -427,9 +427,9 @@ fn get_parent_cache_data(path: &Path) -> Option<&ParentCacheData> {
 }
 
 fn cache_path<H, G>(cache_entries: u32, graph: &StackedGraph<H, G>) -> PathBuf
-where
-    H: Hasher,
-    G: Graph<H> + ParameterSetMetadata + Send + Sync,
+    where
+        H: Hasher,
+        G: Graph<H> + ParameterSetMetadata + Send + Sync,
 {
     let mut hasher = Sha256::default();
 
@@ -451,23 +451,14 @@ where
 mod tests {
     use super::*;
 
-    use std::sync::Once;
-
     use filecoin_hashers::poseidon::PoseidonHasher;
     use storage_proofs_core::api_version::ApiVersion;
 
     use crate::stacked::vanilla::graph::{StackedBucketGraph, EXP_DEGREE};
 
-    static INIT_LOGGER: Once = Once::new();
-    fn init_logger() {
-        INIT_LOGGER.call_once(|| {
-            fil_logger::init();
-        });
-    }
-
     #[test]
     fn test_read_full_range() {
-        init_logger();
+        fil_logger::maybe_init();
         let nodes = 24u32;
         let graph = StackedBucketGraph::<PoseidonHasher>::new_stacked(
             nodes as usize,
@@ -476,7 +467,7 @@ mod tests {
             [0u8; 32],
             ApiVersion::V1_0_0,
         )
-        .expect("new_stacked failure");
+            .expect("new_stacked failure");
 
         let mut cache = ParentCache::new(nodes, nodes, &graph).expect("parent cache new failure");
 
@@ -520,7 +511,7 @@ mod tests {
     ) {
         use yastl::Pool;
 
-        init_logger();
+        fil_logger::maybe_init();
         let pool = Pool::new(3);
         let nodes = 48u32;
         let graph = StackedBucketGraph::<PoseidonHasher>::new_stacked(
@@ -530,7 +521,7 @@ mod tests {
             *porep_id,
             api_version,
         )
-        .expect("new_stacked failure");
+            .expect("new_stacked failure");
 
         let path = cache_path(nodes, &graph);
 
@@ -548,7 +539,7 @@ mod tests {
                         *porep_id,
                         api_version,
                     )
-                    .expect("new_stacked failure");
+                        .expect("new_stacked failure");
 
                     ParentCache::new(nodes, nodes, &graph).expect("parent cache new failure");
                 });
@@ -571,7 +562,7 @@ mod tests {
     }
 
     fn test_read_partial_range(api_version: ApiVersion, porep_id: &[u8; 32]) {
-        init_logger();
+        fil_logger::maybe_init();
         let nodes = 48u32;
         let graph = StackedBucketGraph::<PoseidonHasher>::new_stacked(
             nodes as usize,
@@ -580,7 +571,7 @@ mod tests {
             *porep_id,
             api_version,
         )
-        .expect("new_stacked failure");
+            .expect("new_stacked failure");
 
         let mut half_cache =
             ParentCache::new(nodes / 2, nodes, &graph).expect("parent cache new failure");
