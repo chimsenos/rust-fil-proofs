@@ -11,7 +11,8 @@ use anyhow::Result;
 use byte_slice_cast::{AsSliceOf, FromByteSlice};
 use log::{info, warn};
 // use mapr::{Mmap, MmapMut, MmapOptions};
-use memmapix::{Mmap, MmapMut, MmapOptions, Advice};
+use memmapix::{Mmap, MmapMut, MmapOptions};
+use rustix::mm::Advice;
 
 pub struct CacheReader<T> {
     file: File,
