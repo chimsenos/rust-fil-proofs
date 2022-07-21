@@ -108,7 +108,7 @@ fn get_config_size() -> usize {
 }
 
 fn from_market_tree(cache_path: String) {
-    fs::copy(get_market_tree_path(), get_comm_d_path(cache_path)).expect("from market tree error");
+    fs::soft_link(get_market_tree_path(), get_comm_d_path(cache_path)).expect("from market error");
 }
 
 fn to_market_tree(cache_path: String) {
