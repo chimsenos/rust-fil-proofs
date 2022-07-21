@@ -9,9 +9,9 @@ use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 
 use anyhow::Result;
 use byte_slice_cast::{AsSliceOf, FromByteSlice};
+use libc::MADV_HUGEPAGE;
 use log::{info, warn};
-use mapr::{Mmap, MmapMut, MmapOptions};
-
+use memmapix::{Mmap, MmapMut, MmapOptions};
 pub struct CacheReader<T> {
     file: File,
     bufs: UnsafeCell<[Mmap; 2]>,
@@ -192,7 +192,7 @@ impl<T: FromByteSlice> CacheReader<T> {
             MmapOptions::new()
                 .offset(offset)
                 .len(len)
-                .private()
+                // .private()
                 .map(file)
                 .map_err(|e| e.into())
         }
@@ -278,19 +278,21 @@ impl<T: FromByteSlice> CacheReader<T> {
 fn allocate_layer(sector_size: usize) -> Result<MmapMut> {
     match MmapOptions::new()
         .len(sector_size)
-        .private()
+        // .private()
         .clone()
-        .lock()
+        // .lock()
         .map_anon()
         .and_then(|mut layer| {
-            layer.mlock()?;
+            layer.advise(MADV_HUGEPAGE).expect("TODO: panic message");
+            // layer.mlock()?;
             Ok(layer)
         }) {
         Ok(layer) => Ok(layer),
         Err(err) => {
             // fallback to not locked if permissions are not available
             warn!("failed to lock map {:?}, falling back", err);
-            let layer = MmapOptions::new().len(sector_size).private().map_anon()?;
+            // let layer = MmapOptions::new().len(sector_size).private().map_anon()?;
+            let layer = MmapOptions::new().len(sector_size).map_anon()?;
             Ok(layer)
         }
     }
