@@ -12,7 +12,6 @@ use byte_slice_cast::{AsSliceOf, FromByteSlice};
 use libc::MADV_HUGEPAGE;
 use log::{info, warn};
 use memmapix::{Mmap, MmapMut, MmapOptions};
-use rustix::backend::mm::types::Advice;
 pub struct CacheReader<T> {
     file: File,
     bufs: UnsafeCell<[Mmap; 2]>,
@@ -277,26 +276,27 @@ impl<T: FromByteSlice> CacheReader<T> {
 }
 
 fn allocate_layer(sector_size: usize) -> Result<MmapMut> {
-    match MmapOptions::new()
-        .len(sector_size)
+    MmapOptions::new().len(sector_size).map_anon()
+    // match MmapOptions::new()
+    //     .len(sector_size)
         // .private()
-        .clone()
+        // .clone()
         // .lock()
-        .map_anon()
-        .and_then(|mut layer| {
-            layer.advise(MADV_HUGEPAGE).expect("TODO: panic message");
-            // layer.mlock()?;
-            Ok(layer)
-        }) {
-        Ok(layer) => Ok(layer),
-        Err(err) => {
-            // fallback to not locked if permissions are not available
-            warn!("failed to lock map {:?}, falling back", err);
-            // let layer = MmapOptions::new().len(sector_size).private().map_anon()?;
-            let layer = MmapOptions::new().len(sector_size).map_anon()?;
-            Ok(layer)
-        }
-    }
+        // .map_anon()
+        // .and_then(|mut layer| {
+        //     layer.advise(MADV_HUGEPAGE).expect("TODO: panic message");
+        //     // layer.mlock()?;
+        //     Ok(layer)
+        // }) {
+        // Ok(layer) => Ok(layer),
+        // Err(err) => {
+        //     // fallback to not locked if permissions are not available
+        //     warn!("failed to lock map {:?}, falling back", err);
+        //     // let layer = MmapOptions::new().len(sector_size).private().map_anon()?;
+        //     let layer = MmapOptions::new().len(sector_size).map_anon()?;
+        //     Ok(layer)
+        // }
+    // }
 }
 
 pub fn setup_create_label_memory(
