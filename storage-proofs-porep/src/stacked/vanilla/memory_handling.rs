@@ -275,7 +275,7 @@ impl<T: FromByteSlice> CacheReader<T> {
 }
 
 fn allocate_layer(sector_size: usize) -> Result<MmapMut> {
-    let layer = MmapOptions::new().len(sector_size).map_anon()?;
+    let layer = MmapOptions::new().stack().len(sector_size).map_anon()?;
     Ok(layer)
     // match MmapOptions::new()
     //     .len(sector_size)
